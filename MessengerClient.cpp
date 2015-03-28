@@ -2,7 +2,8 @@
 
 #include <iostream>
 #include <thread>
-
+#include <stdlib.h>
+#include <algorithm>
 
 void Reciever(MessengerClient* messengerClient)
 {
@@ -10,7 +11,16 @@ void Reciever(MessengerClient* messengerClient)
 	{
 		std::string message;
 		*(messengerClient->m_thisSocket) >> message;
-		std::cout << message;
+		
+     	std::for_each(message.begin(), message.end(), [](char& it){
+     	    if( (it) == '_')
+     	        (it) =  ' ';
+     	});
+     	
+		std::string systemCall = "notify-send ";
+		systemCall.append(message);
+		system(systemCall.c_str());
+		//std::cout << message;
 	}
 }
 
@@ -21,6 +31,12 @@ void Sender(MessengerClient* messengerClient)
 	{
 		std::string message;
 		std::cin >> message;
+		
+     	std::for_each(message.begin(), message.end(), [](char& it){
+     	    if( (it) == ' ')
+     	        (it) =  '_';
+     	});
+     	
 		*(messengerClient->m_thisSocket) << message;
 	}
 }

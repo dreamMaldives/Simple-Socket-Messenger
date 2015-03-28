@@ -8,38 +8,38 @@
 
 
 
-void ClientsListener(MessengerServer* messengerServer, ServerSocket* serverSocket)
+void MessengerServer::ClientsListener(ServerSocket* serverSocket)
 {
 	while ( true )
 	{
 		std::string message;
      		*(serverSocket) >> message;
-		//Shared Lock
-		for(ClientsPool::iterator it = messengerServer->m_clientsPool.begin(); 
-			it != messengerServer->m_clientsPool.end(); 
+     		     	
+        std::lock_guard<std::mutex> locker(m_poolMutex);
+        std::string senderName = this->m_clientsPool.at(serverSocket);
+		for(ClientsPool::iterator it = this->m_clientsPool.begin(); 
+			it != this->m_clientsPool.end(); 
 			++it)
 		{
-		//	if(it->second != serverSocket)
-		//	{
-				*(it->second) << it->first << std::string(": ") << message;
-		//	}
+			if(it->first != serverSocket)
+			{
+				*(it->first) << senderName << std::string(": ") << message;
+			}
 		}
-		//Shared UnLock
 	}
 }
 
-void ClientsAccepter(MessengerServer* messengerServer)
+void MessengerServer::ClientsAccepter()
 {
     // Create the socket
-    messengerServer->m_thisSocket = new ServerSocket( 30000 );
+    this->m_thisSocket = new ServerSocket( 30000 );
         
 	while ( true )
-	{
-	
+	{	
 	  try
 	  {
 	      ServerSocket* newSock = new ServerSocket;
-	      messengerServer->m_thisSocket->accept ( *newSock );
+	      this->m_thisSocket->accept ( *newSock );
 	      std::cout << "Socket accepted\n";
 	      std::string clientName;
 	      std::string askName("Who are you?");
@@ -47,15 +47,14 @@ void ClientsAccepter(MessengerServer* messengerServer)
 	      *newSock >> clientName;
 	      std::cout << "Name: "<< clientName << "\n";
 	      
-	  
-//Lock mutex here;
-	  messengerServer->m_clientsPool.insert( std::pair<std::string, ServerSocket*>(clientName, newSock));
-//UnLock mutex here;
+	      
+          m_poolMutex.lock();
+	      this->m_clientsPool.insert( std::pair<ServerSocket*, std::string>(newSock, clientName));
+          m_poolMutex.unlock();
 	
-//Run thread to listen newSock
-	  std::thread clientListener = std::thread(ClientsListener, messengerServer,  newSock);
-	  clientListener.detach();
-//Wait for next client
+    //Run thread to listen newSock
+	      std::thread clientListener = std::thread( &MessengerServer::ClientsListener, this,  newSock);
+	      clientListener.detach();
 	  }
 	  catch ( SocketException& e )
 	  {	  
@@ -71,7 +70,7 @@ MessengerServer::MessengerServer(int port)
 
 try
     {
-        std::thread acceptor(ClientsAccepter, this);
+        std::thread acceptor( &MessengerServer::ClientsAccepter, this);
 	    acceptor.join();
     }
   catch ( SocketException& e )

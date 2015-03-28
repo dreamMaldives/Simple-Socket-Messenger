@@ -11,14 +11,10 @@ void Reciever(MessengerClient* messengerClient)
 	{
 		std::string message;
 		*(messengerClient->m_thisSocket) >> message;
-		
-     	std::for_each(message.begin(), message.end(), [](char& it){
-     	    if( (it) == '_')
-     	        (it) =  ' ';
-     	});
-     	
-		std::string systemCall = "notify-send ";
+		     	
+		std::string systemCall = "notify-send \"";
 		systemCall.append(message);
+		systemCall.append("\"");
 		system(systemCall.c_str());
 		//std::cout << message;
 	}
@@ -30,20 +26,15 @@ void Sender(MessengerClient* messengerClient)
 	while(true)
 	{
 		std::string message;
-		std::cin >> message;
-		
-     	std::for_each(message.begin(), message.end(), [](char& it){
-     	    if( (it) == ' ')
-     	        (it) =  '_';
-     	});
-     	
+		getline(std::cin, message);
+	     	
 		*(messengerClient->m_thisSocket) << message;
 	}
 }
 MessengerClient::MessengerClient(int port)
       	: m_thisSocket( nullptr )
 {
-        m_thisSocket = new ClientSocket("localhost", 30000 );
+        m_thisSocket = new ClientSocket("192.168.0.86", 30000 );
         
      	std::thread recieverThread = std::thread(Reciever, this);
      	std::thread senderThread = std::thread(Sender, this);
